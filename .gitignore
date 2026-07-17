@@ -1,0 +1,5 @@
+# local test / tooling artifacts
+.playwright-mcp/
+*.png
+.DS_Store
+node_modules/
