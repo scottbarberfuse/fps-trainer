@@ -104,7 +104,7 @@ html, body {
 .title {
   font-size: 46px;
   color: var(--neon-pink);
-  text-shadow: 0 0 12px var(--neon-pink), 0 0 34px var(--neon-pink);
+  text-shadow: 0 0 5px var(--neon-pink), 0 0 14px rgba(255, 46, 151, 0.45);
   letter-spacing: 2px;
 }
 .tag { font-size: 11px; letter-spacing: 3px; color: var(--neon-cyan); text-shadow: 0 0 8px var(--neon-cyan); }
@@ -181,9 +181,133 @@ html, body {
   box-shadow: inset 0 0 220px rgba(0, 0, 0, 0.85);
 }
 
+/* ---------- Leaderboard panel ---------- */
+.lb-panel {
+  width: 100%;
+  max-width: 500px;
+  border: 1px solid rgba(57, 197, 207, 0.22);
+  background: rgba(4, 4, 16, 0.65);
+  padding: 14px 18px 10px;
+}
+.lb-heading {
+  font-size: 9px;
+  color: var(--neon-cyan);
+  letter-spacing: 3px;
+  text-shadow: 0 0 8px var(--neon-cyan);
+  text-align: center;
+  margin-bottom: 10px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid rgba(57, 197, 207, 0.18);
+}
+.lb-row {
+  display: grid;
+  grid-template-columns: 22px 38px 1fr auto auto;
+  gap: 0 10px;
+  align-items: center;
+  font-size: 8px;
+  padding: 5px 2px;
+  border-bottom: 1px solid rgba(57, 197, 207, 0.07);
+}
+.lb-row:last-child { border-bottom: none; }
+.lb-row.lb-top { background: rgba(57, 197, 207, 0.05); }
+.lb-rank { color: #6b6b9e; }
+.lb-code { color: var(--neon-yellow); text-shadow: 0 0 6px var(--neon-yellow); letter-spacing: 2px; }
+.lb-score { color: var(--neon-cyan); text-shadow: 0 0 5px var(--neon-cyan); }
+.lb-meta { color: #9b9bbb; text-align: right; }
+.lb-date { color: #55557e; font-size: 7px; text-align: right; }
+.lb-empty { font-size: 8px; color: #55557e; text-align: center; padding: 10px 0; letter-spacing: 2px; }
+
+/* ---------- High-score initials entry ---------- */
+#hiscore {
+  z-index: 15;
+  background: rgba(4, 4, 12, 0.90);
+  cursor: default;
+}
+.hs-box {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 22px;
+  padding: 38px 48px;
+  border: 2px solid var(--neon-yellow);
+  background: rgba(6, 6, 20, 0.85);
+  animation: hs-pulse 1.3s ease-in-out infinite alternate;
+}
+@keyframes hs-pulse {
+  from { box-shadow: 0 0 24px var(--neon-yellow), inset 0 0 24px rgba(227,179,65,0.04); }
+  to   { box-shadow: 0 0 56px var(--neon-yellow), 0 0 90px rgba(227,179,65,0.25), inset 0 0 36px rgba(227,179,65,0.08); }
+}
+.hs-new {
+  font-size: 16px;
+  color: var(--neon-yellow);
+  text-shadow: 0 0 14px var(--neon-yellow);
+  letter-spacing: 3px;
+  animation: hs-flash 0.55s step-start infinite;
+}
+@keyframes hs-flash { 0%,49% { opacity: 1; } 50%,100% { opacity: 0.25; } }
+.hs-scorenum {
+  font-size: 38px;
+  color: var(--neon-cyan);
+  text-shadow: 0 0 18px var(--neon-cyan), 0 0 36px rgba(57,197,207,0.4);
+  line-height: 1;
+}
+.hs-prompt {
+  font-size: 9px;
+  color: var(--ink);
+  letter-spacing: 3px;
+}
+.hs-slots {
+  display: flex;
+  gap: 12px;
+}
+.hs-slot {
+  width: 64px;
+  height: 76px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 38px;
+  border: 2px solid var(--neon-cyan);
+  box-shadow: 0 0 10px var(--neon-cyan);
+  color: var(--neon-cyan);
+  cursor: pointer;
+  background: rgba(57,197,207,0.05);
+  transition: border-color 0.1s, box-shadow 0.1s, color 0.1s;
+}
+.hs-slot.active {
+  border-color: var(--neon-yellow);
+  box-shadow: 0 0 22px var(--neon-yellow);
+  color: var(--neon-yellow);
+  background: rgba(227,179,65,0.07);
+  animation: hs-blink 0.65s ease-in-out infinite alternate;
+}
+@keyframes hs-blink {
+  from { box-shadow: 0 0 22px var(--neon-yellow); }
+  to   { box-shadow: 0 0 8px var(--neon-yellow); }
+}
+.hs-hint {
+  font-size: 7px;
+  color: #55557e;
+  letter-spacing: 1px;
+  text-align: center;
+  line-height: 2;
+}
+.hs-btn {
+  margin-top: 4px;
+  font-size: 13px;
+  padding: 16px 28px;
+}
+
+/* ---------- Overlay scrolls when needed ---------- */
+.overlay { overflow-y: auto; }
+
 @media (max-width: 620px) {
   .title { font-size: 30px; }
   #banner .big { font-size: 24px; }
   .stats { gap: 24px; }
   .stat-num { font-size: 24px; }
+  .hs-box { padding: 28px 20px; gap: 16px; }
+  .hs-slot { width: 54px; height: 64px; font-size: 32px; }
+  .hs-scorenum { font-size: 28px; }
+  .hs-new { font-size: 12px; }
 }

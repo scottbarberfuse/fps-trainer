@@ -494,9 +494,18 @@ function gameOver(won) {
   el('end-msg').textContent = won
     ? `FLAWLESS OPERATOR — ${acc}% ACCURACY${speed}`
     : `WAVE ${waveIndex + 1} CHECKPOINT WAS ${CHECKPOINTS[waveIndex]} — YOU HAD ${score}`;
+
+  // render leaderboard (current state before any new entry)
+  renderLeaderboard(el('end-lb-rows'));
+
   el('end').classList.remove('hidden');
   el('hud').classList.add('hidden');
   el('wave-progress').classList.add('hidden');
+
+  // prompt for initials if it's a new high score
+  if (lbIsHigh(score)) {
+    showHiscoreEntry({ score, wave: won ? TOTAL_WAVES : waveIndex + 1, acc });
+  }
 }
 
 // ---- HUD ------------------------------------------------------------------
@@ -529,6 +538,114 @@ function showBanner(big, sub, holdWaves) {
   bannerTimer = setTimeout(() => b.classList.add('hidden'), 1600);
 }
 
+// ---- leaderboard (localStorage) -------------------------------------------
+const LB_KEY = 'fps_trainer_lb';
+const LB_MAX = 10;
+
+function lbGet() {
+  try { return JSON.parse(localStorage.getItem(LB_KEY) || '[]'); } catch (_) { return []; }
+}
+function lbSave(lb) {
+  try { localStorage.setItem(LB_KEY, JSON.stringify(lb)); } catch (_) {}
+}
+function lbIsHigh(s) {
+  const lb = lbGet();
+  return lb.length < LB_MAX || s > lb[lb.length - 1].score;
+}
+function lbAdd(code, s, wave, acc) {
+  const lb = lbGet();
+  lb.push({ code: code.padEnd(3, '-').slice(0, 3).toUpperCase(), score: s, wave, acc, ts: Date.now() });
+  lb.sort((a, b) => b.score - a.score);
+  lb.splice(LB_MAX);
+  lbSave(lb);
+}
+function lbDaysAgo(ts) {
+  const days = Math.floor((Date.now() - ts) / 86400000);
+  if (days === 0) return 'TODAY';
+  if (days === 1) return '1 DAY AGO';
+  return days + ' DAYS AGO';
+}
+function renderLeaderboard(rowsEl) {
+  const lb = lbGet();
+  if (!lb.length) {
+    rowsEl.innerHTML = '<p class="lb-empty">NO SCORES YET — BE THE FIRST</p>';
+    return;
+  }
+  rowsEl.innerHTML = lb.map((e, i) =>
+    `<div class="lb-row${i === 0 ? ' lb-top' : ''}">` +
+    `<span class="lb-rank">${i + 1}</span>` +
+    `<span class="lb-code">${e.code}</span>` +
+    `<span class="lb-score">${e.score}</span>` +
+    `<span class="lb-meta">W${e.wave}·${e.acc}%</span>` +
+    `<span class="lb-date">${lbDaysAgo(e.ts)}</span>` +
+    `</div>`
+  ).join('');
+}
+
+// ---- high-score initials entry --------------------------------------------
+let hsLetters = ['A', 'A', 'A'];
+let hsCursor = 0;
+let hsPending = null; // { score, wave, acc }
+
+function showHiscoreEntry(pending) {
+  hsPending = pending;
+  hsLetters = ['A', 'A', 'A'];
+  hsCursor = 0;
+  el('hs-scorenum').textContent = pending.score;
+  renderHsSlots();
+  el('hiscore').classList.remove('hidden');
+}
+
+function renderHsSlots() {
+  for (let i = 0; i < 3; i++) {
+    const s = el('hs-slot-' + i);
+    s.textContent = hsLetters[i];
+    s.classList.toggle('active', i === hsCursor);
+  }
+}
+
+function hsCycleUp() {
+  const c = hsLetters[hsCursor].charCodeAt(0);
+  hsLetters[hsCursor] = String.fromCharCode(c >= 90 ? 65 : c + 1);
+  renderHsSlots();
+}
+function hsCycleDown() {
+  const c = hsLetters[hsCursor].charCodeAt(0);
+  hsLetters[hsCursor] = String.fromCharCode(c <= 65 ? 90 : c - 1);
+  renderHsSlots();
+}
+
+function hsSubmit() {
+  if (!hsPending) return;
+  lbAdd(hsLetters.join(''), hsPending.score, hsPending.wave, hsPending.acc);
+  hsPending = null;
+  el('hiscore').classList.add('hidden');
+  // refresh leaderboard on both screens now that the new score is saved
+  renderLeaderboard(el('end-lb-rows'));
+  renderLeaderboard(el('start-lb-rows'));
+}
+
+document.addEventListener('keydown', (e) => {
+  if (el('hiscore').classList.contains('hidden')) return;
+  const key = e.key;
+  if (key === 'ArrowLeft')  { e.preventDefault(); hsCursor = (hsCursor - 1 + 3) % 3; renderHsSlots(); return; }
+  if (key === 'ArrowRight') { e.preventDefault(); hsCursor = (hsCursor + 1) % 3; renderHsSlots(); return; }
+  if (key === 'ArrowUp')    { e.preventDefault(); hsCycleUp();   return; }
+  if (key === 'ArrowDown')  { e.preventDefault(); hsCycleDown(); return; }
+  if (key === 'Backspace')  { e.preventDefault(); hsLetters[hsCursor] = 'A'; if (hsCursor > 0) { hsCursor--; hsLetters[hsCursor] = 'A'; } renderHsSlots(); return; }
+  if (key === 'Enter' || key === ' ') { e.preventDefault(); hsSubmit(); return; }
+  if (/^[A-Za-z]$/.test(key)) {
+    hsLetters[hsCursor] = key.toUpperCase();
+    if (hsCursor < 2) hsCursor++;
+    renderHsSlots();
+  }
+});
+
+el('hs-ok').addEventListener('click', hsSubmit);
+for (let i = 0; i < 3; i++) {
+  el('hs-slot-' + i).addEventListener('click', () => { hsCursor = i; renderHsSlots(); });
+}
+
 // ---- input / boot ---------------------------------------------------------
 canvas.addEventListener('mousemove', (e) => { mouse.x = e.clientX; mouse.y = e.clientY; });
 canvas.addEventListener('mousedown', (e) => { mouse.x = e.clientX; mouse.y = e.clientY; shoot(e.clientX, e.clientY); });
@@ -550,6 +667,8 @@ function begin() {
   score = 0; combo = 0; shotsFired = 0; shotsHit = 0; killTimes.length = 0;
   el('start').classList.add('hidden');
   el('end').classList.add('hidden');
+  el('hiscore').classList.add('hidden');
+  hsPending = null;
   el('hud').classList.remove('hidden');
   el('wave-progress').classList.remove('hidden');
   startWave(0);
@@ -560,3 +679,6 @@ el('retry-btn').addEventListener('click', begin);
 
 resize();
 requestAnimationFrame(frame);
+
+// populate start-screen leaderboard immediately
+renderLeaderboard(el('start-lb-rows'));

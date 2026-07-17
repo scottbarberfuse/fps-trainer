@@ -45,6 +45,10 @@
         <li>Miss the wave's <b>checkpoint score</b> and you're dead</li>
       </ul>
       <button id="start-btn" class="btn">CLICK TO DEPLOY</button>
+      <div class="lb-panel" id="start-lb">
+        <h2 class="lb-heading">◈ HIGH SCORES ◈</h2>
+        <div id="start-lb-rows"></div>
+      </div>
       <p class="credit">core logic borrowed from <a href="https://github.com/scottbarberfuse/intox" target="_blank" rel="noopener">scottbarberfuse/intox</a></p>
     </section>
 
@@ -58,6 +62,26 @@
       </div>
       <p id="end-msg" class="tag"></p>
       <button id="retry-btn" class="btn">REDEPLOY</button>
+      <div class="lb-panel" id="end-lb">
+        <h2 class="lb-heading">◈ HIGH SCORES ◈</h2>
+        <div id="end-lb-rows"></div>
+      </div>
+    </section>
+
+    <!-- High-score initials entry -->
+    <section id="hiscore" class="overlay hidden">
+      <div class="hs-box">
+        <p class="hs-new">★ NEW HIGH SCORE ★</p>
+        <p class="hs-scorenum" id="hs-scorenum">0</p>
+        <p class="hs-prompt">ENTER YOUR INITIALS</p>
+        <div class="hs-slots">
+          <div class="hs-slot active" id="hs-slot-0">A</div>
+          <div class="hs-slot" id="hs-slot-1">A</div>
+          <div class="hs-slot" id="hs-slot-2">A</div>
+        </div>
+        <p class="hs-hint">TYPE · ARROW KEYS TO CYCLE · ENTER TO CONFIRM</p>
+        <button id="hs-ok" class="btn hs-btn">REGISTER SCORE</button>
+      </div>
     </section>
 
     <div id="scanlines"></div>
