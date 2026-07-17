@@ -554,7 +554,7 @@ function lbIsHigh(s) {
 }
 function lbAdd(code, s, wave, acc) {
   const lb = lbGet();
-  lb.push({ code: (code + '---').slice(0, 3).toUpperCase(), score: s, wave, acc, ts: Date.now() });
+  lb.push({ code: code.padEnd(3, '-').slice(0, 3).toUpperCase(), score: s, wave, acc, ts: Date.now() });
   lb.sort((a, b) => b.score - a.score);
   lb.splice(LB_MAX);
   lbSave(lb);
@@ -628,13 +628,13 @@ function hsSubmit() {
 document.addEventListener('keydown', (e) => {
   if (el('hiscore').classList.contains('hidden')) return;
   const key = e.key;
-  if (key === 'ArrowLeft')  { e.preventDefault(); hsCursor = (hsCursor + 2) % 3; renderHsSlots(); return; }
+  if (key === 'ArrowLeft')  { e.preventDefault(); hsCursor = (hsCursor - 1 + 3) % 3; renderHsSlots(); return; }
   if (key === 'ArrowRight') { e.preventDefault(); hsCursor = (hsCursor + 1) % 3; renderHsSlots(); return; }
   if (key === 'ArrowUp')    { e.preventDefault(); hsCycleUp();   return; }
   if (key === 'ArrowDown')  { e.preventDefault(); hsCycleDown(); return; }
-  if (key === 'Backspace')  { e.preventDefault(); if (hsCursor > 0) { hsCursor--; hsLetters[hsCursor] = 'A'; renderHsSlots(); } return; }
+  if (key === 'Backspace')  { e.preventDefault(); hsLetters[hsCursor] = 'A'; if (hsCursor > 0) { hsCursor--; hsLetters[hsCursor] = 'A'; } renderHsSlots(); return; }
   if (key === 'Enter' || key === ' ') { e.preventDefault(); hsSubmit(); return; }
-  if (/^[A-Za-z0-9]$/.test(key)) {
+  if (/^[A-Za-z]$/.test(key)) {
     hsLetters[hsCursor] = key.toUpperCase();
     if (hsCursor < 2) hsCursor++;
     renderHsSlots();
