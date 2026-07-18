@@ -35,6 +35,14 @@ const HITS_PER_DOT = 3;
 const SHRINK = 0.62;           // radius multiplier per hit
 const TOTAL_WAVES = 5;
 
+// Ammo: every shot fired (hit, miss, or wall) burns a round. A wave needs
+// DOTS_PER_WAVE*HITS_PER_DOT = 24 clean hits, so a full 30-round mag leaves
+// only 6 misses of slack — spray and you dry-fire, then eat a reload while dots
+// keep moving. Perfect accuracy never has to reload mid-wave.
+const MAG_SIZE = 30;
+const RELOAD_MS = 1150;        // time on the bench while the mag refills
+const LOW_AMMO = 6;            // pips pulse red at or below this
+
 // Per-wave difficulty. speed/radius are fractions of the smaller screen edge.
 const WAVES = [
   { speedFrac: 0.055, radiusFrac: 0.050, lifetimeMs: 4200, concurrent: 2 },
@@ -110,6 +118,11 @@ let shotsFired = 0;
 let shotsHit = 0;
 const killTimes = [];      // ms a dot survived before being popped (for stats)
 
+let ammo = MAG_SIZE;       // rounds left in the current mag
+let reloading = false;     // true while the reload bar fills
+let reloadStart = 0;       // performance.now() when reload began
+const shells = [];         // ejected casings tumbling off the magazine
+
 const sparks = [];
 const floaters = [];       // rising score numbers
 let recoil = 0;            // crosshair kick 0..1
@@ -139,6 +152,9 @@ const sfx = {
   leak: () => beep(200, 0.22, 'sine', 0.10, 70),
   wave: () => { [440, 660, 880].forEach((f, i) => setTimeout(() => beep(f, 0.14, 'square', 0.14), i * 90)); },
   dead: () => { [400, 300, 200, 120].forEach((f, i) => setTimeout(() => beep(f, 0.22, 'sawtooth', 0.14), i * 130)); },
+  dry: () => beep(120, 0.05, 'square', 0.10, 90),                                   // empty-chamber click
+  reload: () => beep(300, 0.14, 'sine', 0.07, 180),                                 // mag-out whir
+  reloaded: () => { beep(180, 0.07, 'square', 0.12, 240); beep(440, 0.10, 'triangle', 0.09); }, // slap-in
 };
 
 // ---- dots -----------------------------------------------------------------
@@ -183,7 +199,11 @@ function resolveDot(dot, leaked) {
 // ---- shooting -------------------------------------------------------------
 function shoot(px, py) {
   if (state !== State.PLAYING) return;
+  if (reloading) return;                              // hands are full — can't fire
+  if (ammo <= 0) { sfx.dry(); startReload(); return; } // dry-fire kicks off a reload
   shotsFired++;
+  ammo--;
+  ejectShell();
   recoil = 1;
 
   // Clicked the wall itself → spark, no target behind it counts.
@@ -244,6 +264,36 @@ function burst(x, y, color) {
 }
 function addFloater(x, y, text, color) { floaters.push({ x, y, text, color, t: 1 }); }
 
+// ---- ammo / reload --------------------------------------------------------
+// Magazine geometry, centred in the left gutter and scaled to fit any height.
+function ammoLayout() {
+  const marginTop = TOP + 20, marginBot = 30;
+  const maxH = Math.max(120, H - marginTop - marginBot);
+  const pitch = Math.min(15, maxH / MAG_SIZE);
+  const colH = pitch * MAG_SIZE;
+  const y0 = marginTop + (maxH - colH) / 2;
+  return { x: 22, y0, colH, pitch, bw: 9, bh: Math.max(5, pitch - 4) };
+}
+// Centre-y of the round sitting in slot i (0 = bottom of the mag).
+function ammoBulletY(i, L) { return L.y0 + L.colH - (i + 1) * L.pitch + L.pitch / 2; }
+
+// Fling the spent casing off the top of the stack.
+function ejectShell() {
+  const L = ammoLayout();
+  shells.push({
+    x: L.x + L.bw, y: ammoBulletY(ammo, L),   // ammo already decremented → freed slot
+    vx: 120 + Math.random() * 90, vy: -150 - Math.random() * 70,
+    rot: 0, vr: (Math.random() - 0.5) * 16, t: 1,
+  });
+}
+
+function startReload() {
+  if (state !== State.PLAYING || reloading || ammo >= MAG_SIZE) return;
+  reloading = true;
+  reloadStart = performance.now();
+  sfx.reload();
+}
+
 // ---- update loop ----------------------------------------------------------
 let last = performance.now();
 function frame(now) {
@@ -293,6 +343,17 @@ function update(dt, now) {
   if (recoil > 0) recoil = Math.max(0, recoil - dt * 6);
   if (shakeT > 0) shakeT = Math.max(0, shakeT - dt);
 
+  // tumbling casings (gravity + spin, fade out)
+  for (const s of shells) { s.x += s.vx * dt; s.y += s.vy * dt; s.vy += 560 * dt; s.rot += s.vr * dt; s.t -= dt * 1.5; }
+  for (let i = shells.length - 1; i >= 0; i--) if (shells[i].t <= 0) shells.splice(i, 1);
+
+  // reload finishes → fresh mag
+  if (reloading && now - reloadStart >= RELOAD_MS) {
+    reloading = false;
+    ammo = MAG_SIZE;
+    sfx.reloaded();
+  }
+
   // wave complete?
   if (resolvedThisWave >= DOTS_PER_WAVE) endWave();
 }
@@ -318,6 +379,10 @@ function draw(now) {
   for (const f of floaters) drawFloater(f);
 
   ctx.restore();
+
+  // HUD-space ammo furniture — outside the shake transform so it stays put.
+  if (state === State.PLAYING) { drawAmmo(now); drawReload(now); }
+  for (const s of shells) drawShell(s);
 
   if (state === State.PLAYING || state === State.BREAK) drawCrosshair();
 }
@@ -454,6 +519,100 @@ function drawCrosshair() {
   ctx.restore();
 }
 
+// ---- ammo / reload HUD ----------------------------------------------------
+function drawAmmo(now) {
+  const L = ammoLayout();
+  const low = ammo <= LOW_AMMO;
+  // low-ammo pulse for the whole stack
+  const pulse = low ? 0.55 + 0.45 * Math.abs(Math.sin(now / 140)) : 1;
+
+  ctx.save();
+  ctx.textAlign = 'center';
+
+  // label above the mag
+  ctx.font = '8px "Press Start 2P", monospace';
+  ctx.fillStyle = low ? '#f85149' : '#6b6b9e';
+  ctx.fillText('AMMO', L.x + L.bw / 2, L.y0 - 12);
+
+  for (let i = 0; i < MAG_SIZE; i++) {
+    const cy = ammoBulletY(i, L);
+    const top = cy - L.bh / 2;
+    const loaded = i < ammo;
+    if (loaded) {
+      const col = low ? '#f85149' : '#e3b341';
+      ctx.globalAlpha = pulse;
+      ctx.shadowColor = col;
+      ctx.shadowBlur = low ? 10 : 6;
+      // brass casing
+      ctx.fillStyle = col;
+      ctx.fillRect(L.x, top, L.bw, L.bh);
+      // copper tip cap
+      ctx.shadowBlur = 0;
+      ctx.fillStyle = low ? '#ff8a80' : '#c9873a';
+      ctx.fillRect(L.x + L.bw, top + L.bh * 0.18, 3, L.bh * 0.64);
+    } else {
+      // spent slot — faint outline
+      ctx.globalAlpha = 1;
+      ctx.shadowBlur = 0;
+      ctx.strokeStyle = 'rgba(107,107,158,0.28)';
+      ctx.lineWidth = 1;
+      ctx.strokeRect(L.x + 0.5, top + 0.5, L.bw - 1, L.bh - 1);
+    }
+  }
+
+  // count readout under the mag
+  ctx.globalAlpha = 1;
+  ctx.shadowBlur = 0;
+  ctx.font = '9px "Press Start 2P", monospace';
+  ctx.fillStyle = low ? '#f85149' : '#39c5cf';
+  ctx.fillText(ammo + '/' + MAG_SIZE, L.x + L.bw / 2, L.y0 + L.colH + 18);
+  ctx.restore();
+}
+
+function drawShell(s) {
+  ctx.save();
+  ctx.globalAlpha = Math.max(0, s.t);
+  ctx.translate(s.x, s.y);
+  ctx.rotate(s.rot);
+  ctx.fillStyle = '#e3b341';
+  ctx.shadowColor = '#e3b341';
+  ctx.shadowBlur = 6;
+  ctx.fillRect(-4, -1.5, 8, 3);
+  ctx.restore();
+}
+
+function drawReload(now) {
+  if (!reloading) return;
+  const p = Math.min(1, (now - reloadStart) / RELOAD_MS);
+  const h = Math.min(200, H * 0.28), w = 8;
+  const x = W - 26, y0 = (H - h) / 2;
+
+  ctx.save();
+  ctx.textAlign = 'center';
+
+  // label
+  ctx.font = '8px "Press Start 2P", monospace';
+  ctx.fillStyle = '#39c5cf';
+  ctx.globalAlpha = 0.55 + 0.45 * Math.abs(Math.sin(now / 130));
+  ctx.fillText('RELOAD', x + w / 2, y0 - 12);
+  ctx.globalAlpha = 1;
+
+  // track
+  ctx.fillStyle = 'rgba(57,197,207,0.12)';
+  ctx.fillRect(x, y0, w, h);
+  ctx.strokeStyle = 'rgba(57,197,207,0.35)';
+  ctx.lineWidth = 1;
+  ctx.strokeRect(x + 0.5, y0 + 0.5, w - 1, h - 1);
+
+  // fill drains upward
+  const fh = h * p;
+  ctx.fillStyle = '#39c5cf';
+  ctx.shadowColor = '#39c5cf';
+  ctx.shadowBlur = 12;
+  ctx.fillRect(x, y0 + h - fh, w, fh);
+  ctx.restore();
+}
+
 // ---- wave / flow ----------------------------------------------------------
 function startWave(idx) {
   waveIndex = idx;
@@ -461,6 +620,9 @@ function startWave(idx) {
   spawnedThisWave = 0;
   resolvedThisWave = 0;
   wavePips = new Array(DOTS_PER_WAVE).fill('pending');
+  ammo = MAG_SIZE;          // fresh mag every wave
+  reloading = false;
+  shells.length = 0;
   state = State.PLAYING;
   renderPips();
   updateHud();
@@ -647,6 +809,10 @@ for (let i = 0; i < 3; i++) {
 }
 
 // ---- input / boot ---------------------------------------------------------
+// R reloads on demand (ignored unless we're mid-wave with rounds to spare).
+document.addEventListener('keydown', (e) => {
+  if (e.key === 'r' || e.key === 'R') { e.preventDefault(); startReload(); }
+});
 canvas.addEventListener('mousemove', (e) => { mouse.x = e.clientX; mouse.y = e.clientY; });
 canvas.addEventListener('mousedown', (e) => { mouse.x = e.clientX; mouse.y = e.clientY; shoot(e.clientX, e.clientY); });
 canvas.addEventListener('touchstart', (e) => {
