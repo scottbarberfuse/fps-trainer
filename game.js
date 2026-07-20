@@ -840,7 +840,11 @@ function begin() {
   startWave(0);
 }
 
-el('start-btn').addEventListener('click', begin);
+el('start-btn').addEventListener('click', function() {
+  this.innerHTML = '<span class="btn-spinner"></span>';
+  this.disabled = true;
+  begin();
+});
 el('retry-btn').addEventListener('click', begin);
 
 resize();

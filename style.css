@@ -133,6 +133,17 @@ html, body {
 .btn:hover { transform: scale(1.05); box-shadow: 0 0 28px var(--neon-cyan); }
 .btn:active { transform: scale(0.98); }
 
+@keyframes btn-spin { to { transform: rotate(360deg); } }
+.btn-spinner {
+  display: inline-block;
+  width: 18px; height: 18px;
+  border: 3px solid var(--bg);
+  border-top-color: transparent;
+  border-radius: 50%;
+  animation: btn-spin 0.7s linear infinite;
+  vertical-align: middle;
+}
+
 .credit { font-size: 8px; color: #55557e; letter-spacing: 1px; }
 .credit a { color: var(--neon-purple); text-decoration: none; }
 
