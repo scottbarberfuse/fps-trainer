@@ -702,6 +702,7 @@ function showBanner(big, sub, holdWaves) {
 
 // ---- leaderboard (localStorage) -------------------------------------------
 const LB_KEY = 'fps_trainer_lb';
+const PLAYER_KEY = 'fps_trainer_player';
 const LB_MAX = 10;
 
 function lbGet() {
@@ -751,7 +752,8 @@ let hsPending = null; // { score, wave, acc }
 
 function showHiscoreEntry(pending) {
   hsPending = pending;
-  hsLetters = ['A', 'A', 'A'];
+  const saved = localStorage.getItem(PLAYER_KEY);
+  hsLetters = saved ? saved.split('') : ['A', 'A', 'A'];
   hsCursor = 0;
   el('hs-scorenum').textContent = pending.score;
   renderHsSlots();
@@ -779,7 +781,9 @@ function hsCycleDown() {
 
 function hsSubmit() {
   if (!hsPending) return;
-  lbAdd(hsLetters.join(''), hsPending.score, hsPending.wave, hsPending.acc);
+  const code = hsLetters.join('');
+  try { localStorage.setItem(PLAYER_KEY, code); } catch (_) {}
+  lbAdd(code, hsPending.score, hsPending.wave, hsPending.acc);
   hsPending = null;
   el('hiscore').classList.add('hidden');
   // refresh leaderboard on both screens now that the new score is saved
