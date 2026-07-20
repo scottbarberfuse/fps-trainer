@@ -62,6 +62,7 @@ const CHECKPOINTS = [400, 950, 1600, 2350, 3200];
 const canvas = document.getElementById('game');
 const ctx = canvas.getContext('2d');
 const el = (id) => document.getElementById(id);
+const crosshairEl = el('crosshair');
 
 let W = 0, H = 0, MIN = 0, DPR = 1;
 function resize() {
@@ -384,7 +385,14 @@ function draw(now) {
   if (state === State.PLAYING) { drawAmmo(now); drawReload(now); }
   for (const s of shells) drawShell(s);
 
-  if (state === State.PLAYING || state === State.BREAK) drawCrosshair();
+  if (state === State.PLAYING || state === State.BREAK) {
+    crosshairEl.classList.remove('hidden');
+    crosshairEl.style.left = mouse.x + 'px';
+    crosshairEl.style.top  = mouse.y + 'px';
+    crosshairEl.style.setProperty('--gap', (6 + recoil * 6) + 'px');
+  } else {
+    crosshairEl.classList.add('hidden');
+  }
 }
 
 function drawGrid() {
@@ -497,27 +505,6 @@ function drawFloater(f) {
   ctx.restore();
 }
 
-function drawCrosshair() {
-  const kick = recoil * 6;
-  const x = mouse.x, y = mouse.y;
-  ctx.save();
-  ctx.strokeStyle = '#39c5cf';
-  ctx.shadowColor = '#39c5cf';
-  ctx.shadowBlur = 10;
-  ctx.lineWidth = 2;
-  const gap = 6 + kick, len = 14;
-  ctx.beginPath();
-  ctx.moveTo(x - gap - len, y); ctx.lineTo(x - gap, y);
-  ctx.moveTo(x + gap, y); ctx.lineTo(x + gap + len, y);
-  ctx.moveTo(x, y - gap - len); ctx.lineTo(x, y - gap);
-  ctx.moveTo(x, y + gap); ctx.lineTo(x, y + gap + len);
-  ctx.stroke();
-  ctx.beginPath();
-  ctx.arc(x, y, 2, 0, Math.PI * 2);
-  ctx.fillStyle = '#39c5cf';
-  ctx.fill();
-  ctx.restore();
-}
 
 // ---- ammo / reload HUD ----------------------------------------------------
 function drawAmmo(now) {

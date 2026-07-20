@@ -298,6 +298,46 @@ html, body {
   padding: 16px 28px;
 }
 
+/* ---------- CSS crosshair ---------- */
+#crosshair {
+  position: fixed;
+  pointer-events: none;
+  z-index: 21; /* above scanlines */
+  transform: translate(-50%, -50%);
+  --gap: 6px;
+}
+
+.ch-top, .ch-bottom {
+  position: absolute;
+  width: 2px;
+  height: 14px;
+  left: -1px;
+  background: var(--neon-cyan);
+  box-shadow: 0 0 10px var(--neon-cyan);
+}
+.ch-left, .ch-right {
+  position: absolute;
+  width: 14px;
+  height: 2px;
+  top: -1px;
+  background: var(--neon-cyan);
+  box-shadow: 0 0 10px var(--neon-cyan);
+}
+.ch-top    { top:  calc(-1 * (var(--gap) + 14px)); }
+.ch-bottom { top:  var(--gap); }
+.ch-left   { left: calc(-1 * (var(--gap) + 14px)); }
+.ch-right  { left: var(--gap); }
+.ch-dot {
+  position: absolute;
+  width: 4px;
+  height: 4px;
+  border-radius: 50%;
+  background: var(--neon-cyan);
+  box-shadow: 0 0 10px var(--neon-cyan);
+  left: -2px;
+  top: -2px;
+}
+
 /* ---------- Overlay scrolls when needed ---------- */
 .overlay { overflow-y: auto; }
 
