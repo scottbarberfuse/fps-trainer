@@ -305,27 +305,28 @@ html, body {
   z-index: 21; /* above scanlines */
   transform: translate(-50%, -50%);
   --gap: 6px;
+  --arm: 14px;
 }
 
 .ch-top, .ch-bottom {
   position: absolute;
   width: 2px;
-  height: 14px;
+  height: var(--arm);
   left: -1px;
   background: var(--neon-cyan);
   box-shadow: 0 0 10px var(--neon-cyan);
 }
 .ch-left, .ch-right {
   position: absolute;
-  width: 14px;
+  width: var(--arm);
   height: 2px;
   top: -1px;
   background: var(--neon-cyan);
   box-shadow: 0 0 10px var(--neon-cyan);
 }
-.ch-top    { top:  calc(-1 * (var(--gap) + 14px)); }
+.ch-top    { top:  calc(-1 * (var(--gap) + var(--arm))); }
 .ch-bottom { top:  var(--gap); }
-.ch-left   { left: calc(-1 * (var(--gap) + 14px)); }
+.ch-left   { left: calc(-1 * (var(--gap) + var(--arm))); }
 .ch-right  { left: var(--gap); }
 .ch-dot {
   position: absolute;

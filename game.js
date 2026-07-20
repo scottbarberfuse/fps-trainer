@@ -130,6 +130,9 @@ let recoil = 0;            // crosshair kick 0..1
 let shakeT = 0;            // screen-shake timer
 const mouse = { x: -100, y: -100 };
 
+const CROSSHAIR_BASE_GAP = 6;   // px gap between centre and arm at rest
+const CROSSHAIR_RECOIL_SCALE = 6; // extra px of gap per unit of recoil (0..1)
+
 // ---- audio (tiny WebAudio synth, no assets) -------------------------------
 let actx = null;
 function beep(freq, dur, type = 'square', vol = 0.15, slideTo = null) {
@@ -389,7 +392,7 @@ function draw(now) {
     crosshairEl.classList.remove('hidden');
     crosshairEl.style.left = mouse.x + 'px';
     crosshairEl.style.top  = mouse.y + 'px';
-    crosshairEl.style.setProperty('--gap', (6 + recoil * 6) + 'px');
+    crosshairEl.style.setProperty('--gap', (CROSSHAIR_BASE_GAP + recoil * CROSSHAIR_RECOIL_SCALE) + 'px');
   } else {
     crosshairEl.classList.add('hidden');
   }
